@@ -1,0 +1,244 @@
+:root {
+    /* Brand — Supabase emerald green #3ECF8E */
+    --color-brand: #337656;
+    --color-brand-hover: #337656;
+    --color-brand-light: #C5F1DD;
+    --color-brand-button: #337656;
+
+    /* Brand scale (200–600) matching Supabase's design-system brand primitive */
+    --brand-200: #D5F5E6;
+    --brand-300: #A3E8C8;
+    --brand-400: #6BDBA8;
+    --brand-500: #337656;
+    --brand-600: #337656;
+
+    /* Semantic — Destructive (Supabase uses a red scale) */
+    --color-destructive: #EF4444;
+    --destructive-200: #FECACA;
+    --destructive-300: #FCA5A5;
+    --destructive-400: #F87171;
+    --destructive-500: #EF4444;
+    --destructive-600: #DC2626;
+
+    /* Semantic — Warning (Supabase amber) */
+    --color-warning: #F59E0B;
+    --warning-200: #FEF3C7;
+    --warning-300: #FDE68A;
+    --warning-400: #FBBF24;
+    --warning-500: #F59E0B;
+    --warning-600: #D97706;
+
+    /* Semantic — Success */
+    --color-success: #337656;
+    --success-light: #DCFCE7;
+
+    /* Foreground (text) — Solarized Light content tones (base01/base00/base0/base1) */
+    --foreground: #586E75;
+    --foreground-light: #657B83;
+    --foreground-lighter: #839496;
+    --foreground-muted: #93A1A1;
+
+    /* Background — Solarized Light background tones (base3/base2 scale) */
+    --background: #FDF6E3;
+    --background-surface-100: #F5EFDC;
+    --background-surface-200: #EEE8D5;
+    --background-surface-300: #E3DCC6;
+    --background-alternative: #F5EFDC;
+    --background-overlay: #FDF6E3;
+    --background-control: #FDF6E3;
+    --background-dash-sidebar: #EEE8D5;
+    --background-dash-canvas: #FDF6E3;
+
+    /* Border — Solarized Light tan scale */
+    --border: #E3DCC6;
+    --border-secondary: #EEE8D5;
+    --border-strong: #D3CBB7;
+    --border-stronger: #B5AC98;
+    --border-alternative: #E3DCC6;
+    --border-overlay: #E3DCC6;
+    --border-control: #D3CBB7;
+    --border-muted: #EEE8D5;
+
+    /* Legacy aliases (keep for existing component compat) */
+    --color-primary: var(--color-brand);
+    --color-danger: var(--color-destructive);
+    --surface: var(--background);
+    --surface-secondary: var(--background-surface-100);
+    --text-primary: var(--foreground);
+    --text-secondary: var(--foreground-light);
+    --text-muted: var(--foreground-muted);
+    --border-color: var(--border);
+
+    /* Focus — brand-colored ring */
+    --focus-ring-color: var(--color-brand);
+    --focus-ring-shadow: 0 0 0 2px var(--background), 0 0 0 4px rgba(62, 207, 142, 0.35);
+
+    /* Radii — Supabase uses a scale: 3px, 4px, 6px, 8px, 12px, 16px */
+    --radius-xs: 4px;
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, .05);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, .08);
+    --shadow-lg: 0 10px 24px rgba(0, 0, 0, .10);
+
+    /* Spacing — 4px grid system */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-10: 40px;
+    --space-12: 48px;
+    --space-16: 64px;
+
+    /* Breakpoints — desktop monitor sizes */
+    --breakpoint-sm: 1024;
+    --breakpoint-md: 1280;
+    --breakpoint-lg: 1440;
+    --breakpoint-xl: 1920;
+
+    /* Layout — sidebar dimensions */
+    --sidebar-width-expanded: 240px;
+    --sidebar-width-collapsed: 64px;
+
+    /* Sidebar — navigation text and interaction colors (light mode: solarized light sidebar bg, dark text) */
+    --sidebar-foreground: #586E75;
+    --sidebar-foreground-muted: rgba(7, 54, 66, 0.65);
+    --sidebar-foreground-subtle: rgba(7, 54, 66, 0.45);
+    --sidebar-foreground-strong: #073642;
+    --sidebar-hover-bg: rgba(7, 54, 66, 0.06);
+    --sidebar-hover-bg-subtle: rgba(7, 54, 66, 0.04);
+    --sidebar-active-bg: rgba(62, 207, 142, 0.1);
+    --sidebar-danger-hover-bg: rgba(220, 38, 38, 0.1);
+
+    /* Typography — Inter, Supabase's standard */
+    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-size-xs: 12px;
+    --font-size-sm: 13px;
+    --font-size-base: 14px;
+    --font-size-md: 15px;
+    --font-size-lg: 16px;
+    --font-size-xl: 18px;
+    --font-size-2xl: 21px;
+    --font-size-3xl: 24px;
+    --font-size-4xl: 30px;
+    --font-size-5xl: 36px;
+
+    /* Line Heights */
+    --line-height-tight: 1.25;
+    --line-height-normal: 1.5;
+    --line-height-relaxed: 1.75;
+
+    /* Font Weights */
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+
+    /* Letter Spacing — Supabase: never modify unless requested */
+    --letter-spacing-tight: -0.025em;
+    --letter-spacing-normal: 0em;
+    --letter-spacing-wide: 0.025em;
+
+    /* Accessibility */
+    --min-touch-target: 44px;
+    --z-skip-link: 10000;
+}
+
+/* --------------------------------------------------------------------------
+   Dark Mode Overrides
+   Supabase Studio uses #121212 base, #1C1C1C surfaces, #2A2A2A cards.
+   The "deep dark" variant uses even darker values.
+   -------------------------------------------------------------------------- */
+
+[data-theme="dark"] {
+    /* Brand — same green, slightly boosted for dark contrast */
+    --color-brand: #337656;
+    --color-brand-hover: #337656;
+    --color-brand-light: rgba(62, 207, 142, 0.15);
+
+    /* Brand scale (dark mode adjustments) */
+    --brand-200: rgba(62, 207, 142, 0.08);
+    --brand-300: rgba(62, 207, 142, 0.15);
+    --brand-400: rgba(62, 207, 142, 0.25);
+    --brand-500: #337656;
+    --brand-600: #337656;
+
+    /* Destructive (dark) */
+    --color-destructive: #F87171;
+    --destructive-200: rgba(239, 68, 68, 0.1);
+    --destructive-300: rgba(239, 68, 68, 0.2);
+    --destructive-400: rgba(239, 68, 68, 0.35);
+    --destructive-500: #EF4444;
+    --destructive-600: #F87171;
+
+    /* Warning (dark) */
+    --color-warning: #FBBF24;
+    --warning-200: rgba(245, 158, 11, 0.1);
+    --warning-300: rgba(245, 158, 11, 0.2);
+    --warning-400: rgba(245, 158, 11, 0.35);
+    --warning-500: #F59E0B;
+    --warning-600: #FBBF24;
+
+    /* Foreground (text) — Supabase dark mode text hierarchy */
+    --foreground: #EDEDED;
+    --foreground-light: #A1A1AA;
+    --foreground-lighter: #71717A;
+    --foreground-muted: #52525B;
+
+    /* Background — Supabase Studio dark surfaces */
+    --background: #121212;
+    --background-surface-100: #1C1C1C;
+    --background-surface-200: #232323;
+    --background-surface-300: #2A2A2A;
+    --background-alternative: #0A0A0A;
+    --background-overlay: #1C1C1C;
+    --background-control: #232323;
+    --background-dash-sidebar: #171717;
+    --background-dash-canvas: #121212;
+
+    /* Border (dark) — Supabase uses #1A1A1A / #2E2E2E scale */
+    --border: #2E2E2E;
+    --border-secondary: #232323;
+    --border-strong: #3F3F46;
+    --border-stronger: #52525B;
+    --border-alternative: #2E2E2E;
+    --border-overlay: #2E2E2E;
+    --border-control: #3F3F46;
+    --border-muted: #1A1A1A;
+
+    /* Legacy aliases */
+    --color-primary: var(--color-brand);
+    --color-danger: var(--color-destructive);
+    --surface: var(--background-surface-100);
+    --surface-secondary: var(--background-surface-200);
+    --text-primary: var(--foreground);
+    --text-secondary: var(--foreground-light);
+    --text-muted: var(--foreground-muted);
+    --border-color: var(--border);
+
+    /* Sidebar (dark mode: light-colored sidebar bg, so text goes dark) */
+    --sidebar-foreground: var(--foreground);
+    --sidebar-foreground-muted: var(--foreground-light);
+    --sidebar-foreground-subtle: var(--foreground-lighter);
+    --sidebar-foreground-strong: var(--foreground);
+    --sidebar-hover-bg: rgba(255, 255, 255, 0.06);
+    --sidebar-hover-bg-subtle: rgba(255, 255, 255, 0.04);
+    --sidebar-active-bg: rgba(62, 207, 142, 0.1);
+    --sidebar-danger-hover-bg: rgba(239, 68, 68, 0.1);
+
+    /* Focus */
+    --focus-ring-color: var(--color-brand);
+    --focus-ring-shadow: 0 0 0 2px var(--background), 0 0 0 4px rgba(62, 207, 142, 0.25);
+
+    /* Shadows — deeper for dark mode */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, .5);
+    --shadow-lg: 0 10px 24px rgba(0, 0, 0, .6);
+}

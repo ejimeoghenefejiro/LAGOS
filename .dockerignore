@@ -1,0 +1,17 @@
+**
+!Dockerfile
+!LGRRS-Web/
+!LGRRS-Web/**
+!LGRRS-Api/
+!LGRRS-Api/**
+**/node_modules
+**/dist
+**/bin
+**/obj
+**/.git
+**/.env*
+**/appsettings.Development.json
+**/scripts
+**/*.log
+**/*.pfx
+**/*.bak

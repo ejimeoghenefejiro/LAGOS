@@ -1,0 +1,253 @@
+/* Bridge the existing portal components to the supplied design system. */
+:root, [data-theme="dark"] {
+  --text: var(--foreground);
+  --text-h: var(--foreground);
+  --bg: var(--background);
+  --card-bg: var(--background-surface-100);
+  --accent: var(--color-brand);
+  --accent-dark: var(--color-brand);
+  --error: var(--color-destructive);
+  --demo: var(--warning-600);
+  --demo-bg: var(--warning-200);
+  --navy-900: var(--background-dash-sidebar);
+  --navy-800: var(--background-dash-sidebar);
+  --navy-700: var(--background-dash-sidebar);
+  --blue-600: var(--color-brand);
+  --blue-700: var(--color-brand-hover);
+  --teal-600: var(--color-brand);
+  --teal-700: var(--color-brand-hover);
+  --whatsapp: var(--color-brand);
+  --sms: var(--color-brand);
+  --inapp: var(--foreground-light);
+  --inapp-button: var(--color-brand);
+  --amber: var(--warning-600);
+  --amber-bg: var(--warning-200);
+  --pill-green-bg: var(--color-brand-light);
+  --pill-green-text: var(--color-brand);
+  --pill-blue-bg: var(--brand-200);
+  --pill-blue-text: var(--color-brand);
+  --pill-purple-bg: var(--background-surface-200);
+  --pill-purple-text: var(--foreground);
+  --pill-blue-bg2: var(--brand-200);
+  --merchant-heading: var(--foreground);
+  --merchant-muted: var(--foreground-light);
+  --merchant-page-bg: var(--background-dash-canvas);
+  --merchant-card-bg: var(--background-surface-100);
+  --merchant-border: var(--border-control);
+  --merchant-input-text: var(--foreground);
+  --consumer-green: var(--color-brand);
+  --consumer-green-text: var(--color-brand);
+  --consumer-valid-bg: var(--brand-200);
+  --consumer-valid-circle-bg: var(--brand-300);
+  --consumer-heading: var(--foreground);
+  --consumer-label: var(--foreground-light);
+  --consumer-value: var(--foreground);
+  --consumer-amber: var(--color-warning);
+  --consumer-amber-bg: var(--warning-200);
+  --consumer-amber-text: var(--warning-600);
+  --consumer-input-bg: var(--background-control);
+  --consumer-info-bg: var(--background-surface-200);
+  --consumer-nav-inactive: var(--foreground-light);
+  --consumer-page-bg: var(--background);
+  --admin-navy: var(--background-dash-sidebar);
+  --admin-nav-active: var(--color-brand);
+  --admin-green: var(--color-brand);
+  --admin-green-bg: var(--brand-200);
+  --admin-blue: var(--color-brand);
+  --admin-blue-bg: var(--brand-200);
+  --admin-purple: var(--foreground-light);
+  --admin-purple-bg: var(--background-surface-200);
+  --admin-amber: var(--color-warning);
+  --admin-amber-bg: var(--warning-200);
+  --admin-red: var(--color-destructive);
+  --admin-red-bg: var(--destructive-200);
+  --admin-donut-red: var(--color-destructive);
+  --admin-page-bg: var(--background-dash-canvas);
+  --admin-card-bg: var(--background-surface-100);
+  --admin-heading: var(--foreground);
+  --admin-muted: var(--foreground-light);
+  --admin-border: var(--border-color);
+}
+
+:root {
+  font: var(--font-size-base)/var(--line-height-normal) var(--font-family);
+  color: var(--foreground);
+  background: var(--background);
+  color-scheme: light;
+}
+[data-theme="dark"] { color-scheme: dark; }
+
+body { min-width: 320px; }
+.settings-details { display: grid; grid-template-columns: minmax(120px, 1fr) 2fr; gap: 14px 24px; }
+.settings-details dt { color: var(--foreground-light); }
+.settings-details dd { margin: 0; overflow-wrap: anywhere; }
+.settings-channel-options { display: flex; flex-wrap: wrap; gap: 20px; }
+.settings-channel-options label { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; }
+.settings-channel-options input { flex: none; width: 18px; height: 18px; margin: 0; padding: 0; accent-color: var(--color-brand); }
+.registration-fields { border: 0; padding: 0; min-width: 0; }
+#root > .page-card {
+  width: calc(100% - 32px);
+  margin: 48px auto;
+}
+button, input, select, textarea { font-family: inherit; }
+button, input:not([type="checkbox"]), select { min-height: var(--min-touch-target); }
+input, select, textarea { min-width: 0; }
+:is(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: 3px;
+  box-shadow: var(--focus-ring-shadow);
+}
+input::placeholder { color: var(--foreground-light); opacity: 1; }
+a { color: var(--color-brand); }
+.merchant-content, .admin-content { display: block; }
+.consumer-content { display: block; }
+textarea { padding: 10px 12px; color: var(--foreground); background: var(--background-control); border: 1px solid var(--border-control); border-radius: var(--radius-md); }
+.merchant-sidebar, .admin-sidebar {
+  width: var(--sidebar-width-expanded);
+  color: var(--sidebar-foreground);
+  border-right: 1px solid var(--border-control);
+}
+.merchant-nav-item, .admin-nav-item { color: var(--sidebar-foreground); min-height: 44px; }
+.merchant-nav-item:hover, .admin-nav-item:hover {
+  background: var(--sidebar-hover-bg);
+  color: var(--sidebar-foreground-strong);
+}
+.merchant-nav-item.active, .admin-nav-item.active {
+  background: var(--sidebar-active-bg);
+  color: var(--sidebar-foreground-strong);
+  box-shadow: inset 3px 0 var(--color-brand);
+  font-weight: var(--font-weight-semibold);
+}
+.merchant-business-name, .help-title, .admin-brand-title,
+.admin-profile-name, .admin-demo-note strong { color: var(--sidebar-foreground-strong); }
+.admin-brand-subtitle, .admin-profile-role, .admin-demo-note {
+  color: var(--sidebar-foreground-muted);
+}
+.merchant-profile-card, .merchant-profile-icon, .admin-demo-note {
+  background: var(--sidebar-hover-bg);
+}
+.merchant-profile-badge, .admin-logo { color: var(--color-brand); }
+.merchant-help-card { border-color: var(--border-control); }
+.consumer-phone, .consumer-prize-box { background: var(--background-surface-100); }
+.consumer-header, .consumer-nav, .consumer-divider { border-color: var(--border-control); }
+.consumer-input { border-color: var(--border-control); }
+.consumer-winner-banner { border-color: var(--warning-300); }
+.consumer-result-card:not(.valid) .consumer-result-icon { background: var(--destructive-200); }
+.status-pill.tone-gray { color: var(--foreground-light); background: var(--background-surface-200); }
+.step-icon.tone-blue, .step-icon.tone-teal { background: var(--brand-200); }
+.page-card, .step-card, .admin-panel, .admin-kpi-card { box-shadow: var(--shadow-sm); }
+.theme-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 16px;
+  padding: 6px 20px;
+  background: var(--background-surface-100);
+  border-bottom: 1px solid var(--border-control);
+}
+.theme-toolbar a { font-size: 12px; text-decoration: none; font-weight: 600; }
+.theme-toggle { gap: 8px; padding: 6px 12px; font-size: 12px; }
+.merchant-shell, .admin-shell, .consumer-shell, .merchant-onboard-shell { min-height: calc(100vh - 57px); }
+.consumer-phone { min-height: calc(100vh - 57px); }
+.app-shell { min-height: calc(100vh - 57px); }
+[data-theme="dark"] {
+  /* Keep the supplied button green, with brighter text accents on dark surfaces. */
+  --accent-dark: #6bdba8;
+  --pill-green-text: #6bdba8;
+  --pill-blue-text: #6bdba8;
+  --consumer-green-text: #6bdba8;
+  --admin-green: #6bdba8;
+}
+[data-theme="dark"] .admin-manage-draw-button { background: var(--color-brand-button); }
+[data-theme="dark"] a:not([class]) { color: #6bdba8; }
+[data-theme="dark"] :is(.admin-link, .consumer-link, .brand, .theme-toolbar a) { color: #6bdba8; }
+
+@media (max-width: 760px) {
+  .merchant-shell, .admin-shell { flex-direction: column; }
+  .merchant-sidebar, .admin-sidebar {
+    width: 100%;
+    padding: 12px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border-control);
+  }
+  .merchant-nav, .admin-nav { flex-direction: row; overflow-x: auto; gap: 6px; }
+  .merchant-nav-item, .admin-nav-item { flex-shrink: 0; }
+  .merchant-sidebar-footer, .admin-demo-note, .admin-profile-card { display: none; }
+  .merchant-topbar, .admin-topbar { padding: 14px 16px; flex-wrap: wrap; gap: 12px; }
+  .merchant-topbar-right, .admin-topbar-right { flex-wrap: wrap; gap: 10px; }
+  .merchant-content, .admin-content { padding: 16px; }
+  .step-card, .page-card { padding: 20px; }
+  .form-grid { grid-template-columns: 1fr; }
+  .admin-filter-row { flex-wrap: wrap; }
+  .admin-filter-row > * { max-width: 100%; }
+  .admin-draw-details { grid-template-columns: 1fr 1fr; }
+  .admin-draw-details dt, .admin-draw-details dd { grid-row: auto; }
+  .step-actions { flex-wrap: wrap; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  button, a { transition: background-color 150ms, border-color 150ms; }
+}
+
+/* Merchant header: one row at every width, with expandable navigation. */
+.merchant-sidebar[hidden] { display: none; }
+.merchant-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  min-height: 76px;
+  flex-wrap: nowrap;
+  gap: 16px;
+}
+.merchant-topbar-left { flex: 1; min-width: 0; gap: 10px; }
+.merchant-topbar-left > svg { flex-shrink: 0; }
+.merchant-topbar-left > div { min-width: 0; }
+.merchant-title, .merchant-subtitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.merchant-topbar-right { flex-shrink: 0; flex-wrap: nowrap; gap: 12px; }
+.merchant-menu-toggle { width: 44px; padding: 0; flex-shrink: 0; background: transparent; border-color: transparent; }
+.merchant-account { position: relative; }
+.merchant-account-toggle { background: transparent; border-color: transparent; padding: 4px 8px; }
+.merchant-account-toggle .avatar-name { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.merchant-account-toggle .avatar-text { text-align: left; }
+.merchant-account-panel {
+  position: absolute; right: 0; top: calc(100% + 10px);
+  width: min(280px, calc(100vw - 32px));
+  display: flex; flex-direction: column; gap: 6px; padding: 16px;
+  background: var(--background-overlay); border: 1px solid var(--border-control);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);
+}
+.merchant-account-panel strong { overflow-wrap: anywhere; }
+.merchant-account-panel .muted { margin: 0 0 8px; }
+.merchant-account-panel a, .merchant-account-panel button {
+  display: flex; align-items: center; min-height: 44px; padding: 10px;
+  text-decoration: none; border-radius: var(--radius-md);
+}
+.merchant-account-panel a:hover { background: var(--sidebar-hover-bg); }
+.merchant-mobile-title { display: none; }
+.merchant-mobile-nav { padding: 12px; background: var(--background-dash-sidebar); border-bottom: 1px solid var(--border-control); }
+@media (max-width: 1050px) {
+  .merchant-topbar .avatar-text, .merchant-topbar .merchant-subtitle { display: none; }
+}
+@media (max-width: 760px) {
+  .merchant-topbar { min-height: 64px; padding: 8px 12px; gap: 8px; }
+  .merchant-topbar-left { gap: 6px; }
+  .merchant-topbar-right { gap: 6px; }
+  .merchant-topbar .demo-pill { padding: 3px 8px; font-size: 10px; white-space: nowrap; }
+  .merchant-desktop-title { display: none; }
+  .merchant-mobile-title { display: inline; }
+  .merchant-account-toggle { padding: 4px; }
+  .merchant-account-toggle > svg { display: none; }
+  .merchant-topbar .brand-mark { width: 24px; height: 24px; }
+}
+
+.merchant-list-filters { display: grid; grid-template-columns: minmax(0,1fr) 180px; gap: 12px; margin-bottom: 20px; }
+.merchant-list-filters input, .merchant-list-filters select { width: 100%; min-width: 0; box-sizing: border-box; min-height: 46px; }
+.admin-interactive .admin-sidebar[hidden] { display: none; }
+.admin-nav-toggle { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 10px; flex-shrink: 0; background: transparent; color: inherit; }
+@media (max-width: 760px) {
+  .admin-interactive .admin-sidebar { position: fixed; inset: 0 auto 0 0; z-index: 101; width: min(320px, 88vw); box-sizing: border-box; overflow-y: auto; padding: 24px 16px; }
+  .admin-interactive .admin-nav { flex-direction: column; overflow: visible; }
+  .admin-nav-backdrop { position: fixed; inset: 0; z-index: 100; width: 100%; height: 100%; background: #0008; border: 0; border-radius: 0; }
+  .admin-interactive .admin-topbar-right { gap: 8px; }
+  .admin-interactive .admin-date-pill { display: none; }
+  .merchant-list-filters { grid-template-columns: 1fr; }
+}

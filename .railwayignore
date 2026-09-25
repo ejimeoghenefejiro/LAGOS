@@ -1,0 +1,20 @@
+Dashboard/
+.npm-cache/
+**/scripts/
+End users/
+LGRRS/
+Merchant/
+reference-screens/
+**/node_modules/
+**/dist/
+**/bin/
+**/obj/
+**/.git/
+**/.env*
+**/appsettings.Development.json
+**/*.pdf
+**/*.docx
+**/*.png
+**/*.bak
+**/*.pfx
+**/*.log
