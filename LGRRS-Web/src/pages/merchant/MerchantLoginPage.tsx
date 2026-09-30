@@ -1,3 +1,4 @@
+import { isNigerianPhone, phoneHint } from "../../utils/phone";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, ApiError } from "../../api/client";
@@ -19,6 +20,7 @@ export default function MerchantLoginPage() {
 
   const submit = async () => {
     setError(null);
+    if (!isNigerianPhone(phone)) { setError(phoneHint); return; }
     setBusy(true);
     try {
       if (setup && !otpRequested) {
@@ -47,9 +49,10 @@ export default function MerchantLoginPage() {
         : "Sign in with your business phone number and six-digit passcode."}</p>
       <form className="field-column" onSubmit={e => { e.preventDefault(); if (!busy) void submit(); }}>
         <label className="field-label">Business phone number
-          <input type="tel" autoComplete="tel" required value={phone} disabled={busy || otpRequested}
-            onChange={e => setPhone(e.target.value)} placeholder="0803 456 7812" />
+          <input type="tel" inputMode="numeric" maxLength={11} pattern="0[789][0-9]{9}" title={phoneHint} autoComplete="tel" required value={phone} disabled={busy || otpRequested}
+            onChange={e => setPhone(e.target.value)} placeholder="08139662026" />
         </label>
+        <p className="muted small">{phoneHint}</p>
         {setup && otpRequested && <label className="field-label">One-time verification code
           <input inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required value={otp}
             onChange={e => setOtp(e.target.value.replace(/\D/g, ""))} />
@@ -59,12 +62,13 @@ export default function MerchantLoginPage() {
             pattern="[0-9]{6}" maxLength={6} required value={passcode}
             onChange={e => setPasscode(e.target.value.replace(/\D/g, ""))} />
         </label>}
+        
         {setup && otpRequested && <label className="field-label">Confirm passcode
           <input type="password" inputMode="numeric" autoComplete="new-password" pattern="[0-9]{6}" maxLength={6} required value={confirm}
             onChange={e => setConfirm(e.target.value.replace(/\D/g, ""))} />
         </label>}
         {setup && confirm && confirm !== passcode && <p className="error">Passcodes do not match.</p>}
-        <button className="primary" type="submit" disabled={busy || !phone.trim() || ((!setup || otpRequested) && !validPasscode) || (setup && otpRequested && (otp.length !== 6 || confirm !== passcode))}>
+        <button className="primary" type="submit" disabled={busy || !isNigerianPhone(phone) || ((!setup || otpRequested) && !validPasscode) || (setup && otpRequested && (otp.length !== 6 || confirm !== passcode))}>
           {busy ? "Please wait..." : setup ? otpRequested ? "Verify phone & save passcode" : "Send verification code" : "Sign in"}
         </button>
         {setup && otpRequested && <button type="button" disabled={busy} onClick={() => { setOtpRequested(false); setOtp(""); setError(null); }}>Change phone or request another code</button>}
@@ -77,3 +81,5 @@ export default function MerchantLoginPage() {
     </div>
   );
 }
+
+

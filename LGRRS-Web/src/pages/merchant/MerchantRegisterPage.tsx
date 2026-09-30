@@ -1,3 +1,4 @@
+import { isNigerianPhone, phoneHint } from "../../utils/phone";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { api, ApiError } from "../../api/client";
@@ -18,7 +19,7 @@ export default function MerchantRegisterPage() {
   const [busy, setBusy] = useState(false);
 
   const verifyBusiness = async () => {
-    setError(null);
+    setError(null); if (!isNigerianPhone(phone)) { setError(phoneHint); return; }
     setBusy(true);
     try {
       const registered = status ?? await api.post<MerchantSummary>("/api/merchants/register", {
@@ -37,7 +38,7 @@ export default function MerchantRegisterPage() {
     }
   };
 
-  const canVerify = businessName.trim() && phone.trim() && address.trim();
+  const canVerify = businessName.trim() && isNigerianPhone(phone) && address.trim();
 
   return (
     <div className="merchant-onboard-shell">
@@ -80,7 +81,7 @@ export default function MerchantRegisterPage() {
             </label>
             <label className="field-label full-span">
               Phone Number
-              <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0803 456 7812" />
+              <input type="tel" inputMode="numeric" maxLength={11} pattern="0[789][0-9]{9}" title={phoneHint} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="08139662026" /><small className="muted">{phoneHint}</small>
             </label>
             <label className="field-label full-span">Business address<input value={address} onChange={e => setAddress(e.target.value)} maxLength={500} placeholder="Street address, area and city" /></label>
           </fieldset>
@@ -108,3 +109,4 @@ export default function MerchantRegisterPage() {
     </div>
   );
 }
+

@@ -6,7 +6,7 @@ public record RegisterMerchantRequest(
     string LgaCode,
     string? LagosTaxId,
     string? LgrrsSystemId,
-    string PhoneNumber,
+    [NigerianPhone] string PhoneNumber,
     string? BusinessAddress = null);
 
 public record MerchantSummaryResponse(
@@ -17,12 +17,13 @@ public record MerchantSummaryResponse(
     string Status,
     string? LgrrsSystemId = null);
 
-public record RequestOtpRequest(string PhoneNumber);
+public record RequestOtpRequest([NigerianPhone] string PhoneNumber);
 
-public record VerifyOtpRequest(string PhoneNumber, string Otp);
-public record MerchantPasscodeSetupRequest(string PhoneNumber, string Otp, string Passcode);
-public record MerchantPasscodeLoginRequest(string PhoneNumber, string Passcode);
+public record VerifyOtpRequest([NigerianPhone] string PhoneNumber, string Otp);
+public record MerchantPasscodeSetupRequest([NigerianPhone] string PhoneNumber, string Otp, string Passcode);
+public record MerchantPasscodeLoginRequest([NigerianPhone] string PhoneNumber, string Passcode);
 
 public record TokenResponse(string AccessToken, string Role, string DisplayName);
 
 public record StaffLoginRequest(string Email, string Password);
+

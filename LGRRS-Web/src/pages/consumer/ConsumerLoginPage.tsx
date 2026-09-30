@@ -1,3 +1,4 @@
+import { isNigerianPhone, phoneHint } from "../../utils/phone";
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { api, ApiError } from "../../api/client";
@@ -16,7 +17,7 @@ export default function ConsumerLoginPage() {
   const claimCode = new URLSearchParams(location.hash.slice(1)).get("code");
 
   const requestOtp = async () => {
-    setError(null);
+    setError(null); if (!isNigerianPhone(phone)) { setError(phoneHint); return; }
     try {
       await api.post("/api/auth/consumer/request-otp", { phoneNumber: phone });
       setOtpRequested(true);
@@ -26,7 +27,7 @@ export default function ConsumerLoginPage() {
   };
 
   const verifyOtp = async () => {
-    setError(null);
+    setError(null); if (!isNigerianPhone(phone)) { setError(phoneHint); return; }
     try {
       const token = await api.post<TokenResponse>("/api/auth/consumer/verify-otp", { phoneNumber: phone, otp });
       setSession({ accessToken: token.accessToken, role: token.role, displayName: token.displayName });
@@ -60,14 +61,15 @@ export default function ConsumerLoginPage() {
             <p><Link to={claimCode ? `/check/claim#code=${encodeURIComponent(claimCode)}` : "/check/claim"}>Claim paper receipt</Link></p>
 
             <div className="consumer-field-column">
-              <input className="consumer-input" placeholder="Your phone number" value={phone} onChange={(e) => setPhone(e.target.value)} />
-              <button className="consumer-button-outline" onClick={requestOtp} disabled={!phone.trim()}>Send OTP</button>
+              <input className="consumer-input" type="tel" inputMode="numeric" maxLength={11} pattern="0[789][0-9]{9}" aria-label="Nigerian mobile number" placeholder="08139662026" value={phone} onChange={(e) => { setPhone(e.target.value); setOtpRequested(false); setOtp(""); }} />
+              <p className="consumer-muted">{phoneHint}</p>
+              <button className="consumer-button-outline" onClick={requestOtp} disabled={!isNigerianPhone(phone)}>Send OTP</button>
             </div>
 
             {otpRequested && (
               <div className="consumer-field-column">
                 <input className="consumer-input" placeholder="Enter OTP" value={otp} onChange={(e) => setOtp(e.target.value)} />
-                <button className="consumer-button" onClick={verifyOtp} disabled={!otp.trim()}>Verify &amp; Continue</button>
+                <button className="consumer-button" onClick={verifyOtp} disabled={!isNigerianPhone(phone) || !otp.trim()}>Verify &amp; Continue</button>
               </div>
             )}
 
@@ -78,3 +80,4 @@ export default function ConsumerLoginPage() {
     </div>
   );
 }
+
