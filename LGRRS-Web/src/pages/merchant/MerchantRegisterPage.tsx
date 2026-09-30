@@ -31,7 +31,7 @@ export default function MerchantRegisterPage() {
 
 
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not verify business. Check the details and try again.");
+      setError(err instanceof ApiError ? err.message : "Could not register your business. Check the details and try again.");
     } finally {
       setBusy(false);
     }
@@ -78,30 +78,25 @@ export default function MerchantRegisterPage() {
                 {LGAS.map((l) => <option key={l} value={l}>{l}</option>)}
               </select>
             </label>
-            <label className="field-label">
-              LGRRS System ID
-              <input readOnly value={status?.lgrrsSystemId ?? ""} placeholder="Generated when you register" />
-            </label>
             <label className="field-label full-span">
               Phone Number
               <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0803 456 7812" />
             </label>
             <label className="field-label full-span">Business address<input value={address} onChange={e => setAddress(e.target.value)} maxLength={500} placeholder="Street address, area and city" /></label>
           </fieldset>
-          <p className="muted">Your LGRRS ID identifies your business in this programme. An official LIRS Tax ID can be linked later without losing your receipts or history. Demo verification does not verify tax registration.</p>
+          <p className="muted">No LGRRS ID is required to register. Click “Register business & generate ID” below and we will create it for you. An official LIRS Tax ID can be linked later without losing your receipts or history.</p>
 
           <div className="step-actions">
-            <button className="outline tone-blue" onClick={verifyBusiness} disabled={!canVerify || busy || status !== null}>
-              {busy ? "Registering..." : status ? "Submitted for review" : "Register business"}
-            </button>
             {status ? (
-              <Link to="/merchant/login" className="primary tone-blue">Continue →</Link>
+              <Link to="/merchant/login" className="primary tone-blue">Continue to sign in →</Link>
             ) : (
-              <button className="primary tone-blue" disabled>Continue →</button>
+              <button className="primary tone-blue" onClick={verifyBusiness} disabled={!canVerify || busy}>
+                {busy ? "Registering business..." : "Register business & generate ID"}
+              </button>
             )}
           </div>
 
-          {error && <p className="error">{error}</p>}
+          {error && <p className="error" role="alert">{error}</p>}
           {status?.lgrrsSystemId && <p role="status"><strong>Your business ID: {status.lgrrsSystemId}</strong><br />Keep this ID for your records.</p>}
           {status && (
             <p className={status.status === "Verified" ? "success" : "muted"}>
