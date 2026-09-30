@@ -100,7 +100,7 @@ export default function MerchantRegisterPage() {
           {status?.lgrrsSystemId && <p role="status"><strong>Your business ID: {status.lgrrsSystemId}</strong><br />Keep this ID for your records.</p>}
           {status && (
             <p className={status.status === "Verified" ? "success" : "muted"}>
-              Status: {status.status}. {status.status === "Verified" ? "You can now sign in with your phone number and OTP." : "Sign in with your phone and OTP to view the application. Administrator approval is required before issuing receipts."}
+              Status: {status.status}. Verify your phone once and set up your six-digit passcode to sign in. {status.status !== "Verified" && "Administrator approval is required before issuing receipts."}
             </p>
           )}
         </section>

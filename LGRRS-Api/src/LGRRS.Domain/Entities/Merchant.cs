@@ -23,6 +23,9 @@ public class Merchant
 
     public string PhoneEncrypted { get; set; } = string.Empty;
     public string PhoneHash { get; set; } = string.Empty;
+    public string? PasscodeHash { get; set; }
+    public int PasscodeFailedAttempts { get; set; }
+    public DateTimeOffset? PasscodeLockedUntil { get; set; }
 
     public MerchantStatus Status { get; set; } = MerchantStatus.Pending;
 

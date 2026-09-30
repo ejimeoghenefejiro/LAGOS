@@ -20,6 +20,8 @@ public record MerchantSummaryResponse(
 public record RequestOtpRequest(string PhoneNumber);
 
 public record VerifyOtpRequest(string PhoneNumber, string Otp);
+public record MerchantPasscodeSetupRequest(string PhoneNumber, string Otp, string Passcode);
+public record MerchantPasscodeLoginRequest(string PhoneNumber, string Passcode);
 
 public record TokenResponse(string AccessToken, string Role, string DisplayName);
 

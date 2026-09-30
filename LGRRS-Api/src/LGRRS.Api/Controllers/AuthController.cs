@@ -1,4 +1,5 @@
 using LGRRS.Api.Auth;
+using LGRRS.Domain.Entities;
 using LGRRS.Api.Contracts;
 using LGRRS.Domain.Enums;
 using LGRRS.Infrastructure.Persistence;
@@ -42,11 +43,17 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("merchant/verify-otp")]
-    public async Task<ActionResult<TokenResponse>> VerifyOtp(VerifyOtpRequest request)
+    public async Task<ActionResult<TokenResponse>> VerifyOtp(MerchantPasscodeSetupRequest request)
     {
+        if (!ValidPasscode(request.Passcode)) return BadRequest("Choose a six-digit passcode.");
         var phoneHash = _codec.Hash(request.PhoneNumber);
+        var merchantId = await _db.Merchants.Where(m => m.PhoneHash == phoneHash).Select(m => (Guid?)m.MerchantId).FirstOrDefaultAsync();
+        if (merchantId is null) return Unauthorized("Invalid phone number or OTP.");
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+        await PosLock.Acquire(_db, merchantId.Value);
         if (!await _otpProvider.VerifyOtp(phoneHash, Roles.Merchant, request.Otp))
         {
+            await transaction.CommitAsync(); // Persist failed OTP attempt counters.
             return Unauthorized("Invalid or expired OTP.");
         }
 
@@ -61,8 +68,48 @@ public class AuthController : ControllerBase
             return Forbid();
         }
 
+        var eventType = merchant.PasscodeHash is null ? "MerchantPasscodeCreated" : "MerchantPasscodeReset";
+        merchant.PasscodeHash = BCrypt.Net.BCrypt.HashPassword(request.Passcode, workFactor: 12);
+        merchant.PasscodeFailedAttempts = 0;
+        merchant.PasscodeLockedUntil = null;
+        _db.AuditEvents.Add(new AuditEvent { EventType = eventType, EntityType = "Merchant", EntityId = merchant.MerchantId,
+            ActorId = merchant.MerchantId.ToString(), ActorName = merchant.BusinessName, ActorRole = Roles.Merchant });
+        await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
         var token = _tokenService.IssueToken(merchant.MerchantId.ToString(), Roles.Merchant, merchant.BusinessName);
         return Ok(new TokenResponse(token, Roles.Merchant, merchant.BusinessName));
+    }
+
+    private static bool ValidPasscode(string? passcode) => passcode is { Length: 6 } && passcode.All(char.IsAsciiDigit);
+
+    [HttpPost("merchant/login")]
+    public async Task<ActionResult<TokenResponse>> MerchantLogin(MerchantPasscodeLoginRequest request)
+    {
+        if (!ValidPasscode(request.Passcode)) return Unauthorized("Invalid phone number or passcode.");
+        var phoneHash = _codec.Hash(request.PhoneNumber);
+        var merchantId = await _db.Merchants.Where(m => m.PhoneHash == phoneHash).Select(m => (Guid?)m.MerchantId).FirstOrDefaultAsync();
+        if (merchantId is null) return Unauthorized("Invalid phone number or passcode.");
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+        await PosLock.Acquire(_db, merchantId.Value);
+        var merchant = await _db.Merchants.SingleAsync(m => m.MerchantId == merchantId);
+        var now = DateTimeOffset.UtcNow;
+        if (merchant.PasscodeLockedUntil > now) return StatusCode(429, "Too many incorrect attempts. Try again in 15 minutes or reset your passcode using OTP.");
+        if (merchant.Status == MerchantStatus.Suspended) return Forbid();
+        if (merchant.PasscodeHash is null) return Unauthorized("Verify your phone and set up your passcode first.");
+        if (merchant.PasscodeLockedUntil != null) merchant.PasscodeFailedAttempts = 0;
+        if (!BCrypt.Net.BCrypt.Verify(request.Passcode, merchant.PasscodeHash))
+        {
+            merchant.PasscodeFailedAttempts++;
+            merchant.PasscodeLockedUntil = merchant.PasscodeFailedAttempts >= 5 ? now.AddMinutes(15) : null;
+            await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
+            return Unauthorized("Invalid phone number or passcode.");
+        }
+        merchant.PasscodeFailedAttempts = 0;
+        merchant.PasscodeLockedUntil = null;
+        await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
+        return Ok(new TokenResponse(_tokenService.IssueToken(merchant.MerchantId.ToString(), Roles.Merchant, merchant.BusinessName), Roles.Merchant, merchant.BusinessName));
     }
 
     [HttpPost("consumer/request-otp")]
