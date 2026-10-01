@@ -42,7 +42,7 @@ public class PaperClaimsController(LgrrsDbContext db) : ControllerBase
         receipt.CustomerPhoneHash = phone;
         receipt.CustomerPhoneMasked = User.FindFirstValue(ClaimTypes.Name) ?? "Verified customer";
         receipt.PaperClaimedAt = now;
-        var draw = await db.DrawPeriods.Where(d => d.Status == DrawPeriodStatus.Open &&
+        var draw = await db.DrawPeriods.Where(d => d.Status == DrawPeriodStatus.Open && (d.LgaCode == null || d.LgaCode == receipt.Merchant.LgaCode.Trim().ToUpper()) &&
             d.StartDate <= receipt.TransactionDate && d.EndDate >= receipt.TransactionDate && d.EndDate >= now)
             .OrderBy(d => d.EndDate).FirstOrDefaultAsync();
         if (draw != null)

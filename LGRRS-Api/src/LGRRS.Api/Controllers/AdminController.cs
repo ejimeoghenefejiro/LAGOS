@@ -122,7 +122,10 @@ public class AdminController : ControllerBase
             new FraudRiskSummary(fraudHigh, fraudMedium, fraudLow)));
     }
 
-    public record CreateDrawRequest(string Type, decimal PrizeBudget, int WinnerCount = 50);
+    public record CreateDrawRequest(string Type, decimal PrizeBudget, int WinnerCount = 50, string? LgaCode = null);
+
+    [HttpGet("draws/lgas")]
+    public async Task<IActionResult> DrawLgas() => Ok(await _db.Merchants.Select(m => m.LgaCode.Trim().ToUpper()).Distinct().OrderBy(l => l).ToListAsync());
 
     [HttpGet("draws")]
     public async Task<IActionResult> DrawHistory()
@@ -132,13 +135,15 @@ public class AdminController : ControllerBase
                 d.StartDate, d.EndDate, d.DrawDate, d.Status.ToString(), d.PrizeBudget,
                 d.RewardEntries.Count(e => e.EligibilityStatus == EligibilityStatus.Eligible &&
                     e.RiskStatus == RiskStatus.Clear && e.Receipt!.Status == ReceiptStatus.Valid &&
-                    e.Receipt.Merchant!.Status == MerchantStatus.Verified))).ToListAsync();
+                    e.Receipt.Merchant!.Status == MerchantStatus.Verified), d.LgaCode)).ToListAsync();
         return Ok(draws);
     }
 
     [HttpPost("draws")]
     public async Task<IActionResult> CreateDraw(CreateDrawRequest request)
     {
+        var lga = request.LgaCode?.Trim().ToUpperInvariant();
+        if (string.IsNullOrEmpty(lga) || !await _db.Merchants.AnyAsync(m => m.LgaCode.Trim().ToUpper() == lga)) return BadRequest("Select an LGA with registered businesses.");
         if (request.Type is not ("Weekly" or "Monthly"))
             return BadRequest("Choose Weekly or Monthly.");
         if (request.WinnerCount < 1 || request.WinnerCount > 1000) return BadRequest("Choose between 1 and 1000 winners.");
@@ -149,13 +154,13 @@ public class AdminController : ControllerBase
             return BadRequest($"Prize budget must be between {minimumBudget} and 1000000000, with at most two decimal places.");
         await using var transaction = await _db.Database.BeginTransactionAsync();
         await LockDrawAdministration();
-        if (await _db.DrawPeriods.AnyAsync(d => d.Status == DrawPeriodStatus.Open))
-            return Conflict("An open draw already exists. Complete it before creating another.");
+        if (await _db.DrawPeriods.AnyAsync(d => d.Status == DrawPeriodStatus.Open && (d.LgaCode == null || d.LgaCode == lga)))
+            return Conflict("An open draw already covers this LGA. Complete it before creating another.");
         var start = DateTimeOffset.UtcNow;
         var draw = new DrawPeriod {
             Type = request.Type == "Weekly" ? DrawPeriodType.Weekly : DrawPeriodType.Monthly,
             StartDate = start, EndDate = request.Type == "Weekly" ? start.AddDays(7) : start.AddMonths(1),
-            PrizeBudget = request.PrizeBudget, WinnerCount = request.WinnerCount
+            PrizeBudget = request.PrizeBudget, WinnerCount = request.WinnerCount, LgaCode = lga
         };
         _db.DrawPeriods.Add(draw);
         _db.AuditEvents.Add(new AuditEvent { EventType = "DrawCreated", EntityType = "DrawPeriod",
@@ -164,7 +169,7 @@ public class AdminController : ControllerBase
         await _db.SaveChangesAsync();
         await transaction.CommitAsync();
         return Ok(new CurrentDrawResponse(draw.DrawPeriodId, draw.Type.ToString(), draw.StartDate,
-            draw.EndDate, null, "Open", draw.PrizeBudget, 0));
+            draw.EndDate, null, "Open", draw.PrizeBudget, 0, draw.LgaCode));
     }
 
     private Task<int> LockDrawAdministration() => _db.Database.ExecuteSqlRawAsync(
@@ -195,7 +200,7 @@ public class AdminController : ControllerBase
             draw.DrawDate,
             draw.Status.ToString(),
             draw.PrizeBudget,
-            eligibleEntries));
+            eligibleEntries, draw.LgaCode));
     }
 
 
@@ -205,6 +210,7 @@ public class AdminController : ControllerBase
         // Include locations with entries that are all blocked: show their zero eligible count.
         var locations = await _db.RewardEntries.Where(e => e.DrawPeriodId == draw.DrawPeriodId)
             .Select(e => e.Receipt!.Merchant!.LgaCode).Distinct().ToListAsync();
+        if (draw.LgaCode != null) locations = new List<string> { draw.LgaCode };
         var customers = LocationDraw.Customers(candidates);
         var allocations = LocationDraw.Allocate(draw.DrawPeriodId, draw.WinnerCount, locations, customers);
         var payload = System.Text.Json.JsonSerializer.Serialize(new { draw.DrawPeriodId, draw.PrizeBudget, draw.WinnerCount,
@@ -222,7 +228,7 @@ public class AdminController : ControllerBase
         if (draw.Status != DrawPeriodStatus.Open) return Conflict("This draw is already published.");
         var candidates = await _db.RewardEntries.Include(e => e.Receipt).ThenInclude(r => r!.Merchant)
             .Where(e => e.DrawPeriodId == drawPeriodId && e.EligibilityStatus == EligibilityStatus.Eligible && e.RiskStatus == RiskStatus.Clear
-                && e.Receipt!.Status == ReceiptStatus.Valid && e.Receipt.Merchant!.Status == MerchantStatus.Verified && e.DrawResult == null).ToListAsync();
+                && e.Receipt!.Status == ReceiptStatus.Valid && e.Receipt.Merchant!.Status == MerchantStatus.Verified && e.DrawResult == null && (draw.LgaCode == null || e.Receipt.Merchant.LgaCode.Trim().ToUpper() == draw.LgaCode)).ToListAsync();
         return Ok(await BuildLocationPreview(draw, candidates));
     }
     public record RunLocationDrawRequest(string PreviewToken);
@@ -252,7 +258,7 @@ public class AdminController : ControllerBase
                 && e.RiskStatus == RiskStatus.Clear
                 && e.Receipt!.Status == ReceiptStatus.Valid
                 && e.Receipt.Merchant!.Status == MerchantStatus.Verified
-                && e.DrawResult == null)
+                && e.DrawResult == null && (draw.LgaCode == null || e.Receipt.Merchant.LgaCode.Trim().ToUpper() == draw.LgaCode))
             .ToListAsync();
 
         if (candidates.Count == 0) return Conflict("No eligible entries yet. Issue receipts during this draw period first.");

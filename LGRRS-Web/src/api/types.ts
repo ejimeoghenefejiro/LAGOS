@@ -103,6 +103,7 @@ export interface AdminOverview {
 }
 
 export interface CurrentDraw {
+  lgaCode: string | null;
   drawPeriodId: string;
   type: string;
   startDate: string;

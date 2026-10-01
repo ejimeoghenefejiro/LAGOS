@@ -31,7 +31,7 @@ public record CurrentDrawResponse(
     DateTimeOffset? DrawDate,
     string Status,
     decimal PrizeBudget,
-    int EligibleEntries);
+    int EligibleEntries, string? LgaCode);
 
 public record AuditEventItem(
     Guid EventId,

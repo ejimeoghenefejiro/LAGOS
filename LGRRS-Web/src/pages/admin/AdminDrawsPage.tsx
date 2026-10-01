@@ -13,6 +13,8 @@ export default function AdminDrawsPage() {
   const [notFound, setNotFound] = useState(false);
   const [history, setHistory] = useState<CurrentDraw[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lgas, setLgas] = useState<string[]>([]);
+  const [lga, setLga] = useState("");
   const [drawType, setDrawType] = useState("Weekly");
   const [budget, setBudget] = useState("1000000");
   const [winnerCount, setWinnerCount] = useState("50");
@@ -33,9 +35,10 @@ export default function AdminDrawsPage() {
   const load = async () => {
     if (!session) return;
     try {
+      setLgas(await api.get<string[]>("/api/admin/draws/lgas", session.accessToken));
       const draws = await api.get<CurrentDraw[]>("/api/admin/draws", session.accessToken);
       setHistory(draws);
-      setNotFound(!draws.some(d => d.status === "Open"));
+      setNotFound(true);
       const selected = draws.find(d => d.status === "Open") ?? draws[0];
       if (selected) await selectDraw(selected);
       else { setDraw(null); setWinners([]); }
@@ -55,9 +58,9 @@ export default function AdminDrawsPage() {
     if (!session) return;
     setRunning(true); setError(null);
     try {
-      const created = await api.post<CurrentDraw>("/api/admin/draws", { type: drawType, prizeBudget: Number(budget), winnerCount: Number(winnerCount) }, session.accessToken);
+      const created = await api.post<CurrentDraw>("/api/admin/draws", { type: drawType, prizeBudget: Number(budget), winnerCount: Number(winnerCount), lgaCode: lga }, session.accessToken);
       setHistory(prev => [created, ...prev]); setDraw(created); setWinners([]);
-      setNotFound(false); setConfirmRun(false); await selectDraw(created);
+      setNotFound(true); setConfirmRun(false); await selectDraw(created);
     } catch (err) { setError(err instanceof Error ? err.message : "Could not create draw."); }
     finally { setRunning(false); }
   };
@@ -88,8 +91,9 @@ export default function AdminDrawsPage() {
       {loading && <p role="status">Loading draws…</p>}
       {!loading && notFound && <section className="admin-panel">
         <h2>Open a new draw</h2>
-        <p>No draw is open. Create a period so new qualifying receipts can enter automatically.</p>
+        <p>Create a period for one LGA. Only purchases from businesses in that LGA enter. Each LGA can have one open draw.</p>
         <form className="stack-md" onSubmit={e => { e.preventDefault(); void createDraw(); }}>
+          <label className="field-label">LGA<select required value={lga} onChange={e => setLga(e.target.value)} disabled={running}><option value="">Select an LGA</option>{lgas.map(code => <option key={code} value={code}>{code}</option>)}</select></label>
           <div className="form-grid">
             <label className="field-label">Draw period<select value={drawType} onChange={e => setDrawType(e.target.value)} disabled={running}>
               <option>Weekly</option><option>Monthly</option>
@@ -107,7 +111,7 @@ export default function AdminDrawsPage() {
           const selected = history.find(d => d.drawPeriodId === e.target.value);
           if (selected) void selectDraw(selected);
         }}>
-          {history.map(d => <option key={d.drawPeriodId} value={d.drawPeriodId}>{d.type} · {new Date(d.startDate).toLocaleDateString()} · {d.status} · {d.drawPeriodId.slice(0, 8)}</option>)}
+          {history.map(d => <option key={d.drawPeriodId} value={d.drawPeriodId}>{d.lgaCode ?? "Legacy multi-LGA"} · {d.type} · {new Date(d.startDate).toLocaleDateString()} · {d.status} · {d.drawPeriodId.slice(0, 8)}</option>)}
         </select>
       </label>}
       {draw && <>
@@ -117,6 +121,7 @@ export default function AdminDrawsPage() {
           <span className={`status-pill tone-${draw.status === "Open" ? "amber" : "green"}`}>{draw.status}</span>
         </div>
         <dl className="admin-draw-details">
+          <dt>LGA</dt><dd>{draw.lgaCode ?? "Legacy multi-LGA draw"}</dd>
           <dt>Draw Period</dt>
           <dd>{new Date(draw.startDate).toLocaleDateString()} &ndash; {new Date(draw.endDate).toLocaleDateString()}</dd>
           <dt>Eligible Entries</dt>
@@ -128,7 +133,7 @@ export default function AdminDrawsPage() {
         </dl>
         {draw.status === "Open" && preview && <section>
           <h3>Location allocation preview</h3>
-          <p>{preview.winnerCount} winners · ₦{preview.prizePerWinner.toLocaleString()} each. Locations are business LGAs with entries in this draw, including locations whose entries are all ineligible.</p>
+          <p>{preview.winnerCount} winners · ₦{preview.prizePerWinner.toLocaleString()} each. All slots for a new draw belong to its selected business LGA, even when no customers have qualified yet.</p>
           {preview.locations.length === 0 && <p>No participating locations yet.</p>}
           {preview.locations.some(l => l.slots === 0) && <p role="status">There are fewer winner slots than locations. Locations with zero slots will have no winner in this draw.</p>}
           <div className="table-scroll"><table className="admin-table">
@@ -194,8 +199,8 @@ export default function AdminDrawsPage() {
           <h2>How Winners Are Selected</h2>
         </div>
         <ul className="admin-algo-notes">
-          <li>Winner slots are split evenly across participating business LGAs, differing by at most one slot.</li>
-          <li>Any remaining slots use a fixed order specific to this draw, shown in the preview before selection.</li>
+          <li>Each new draw covers one selected LGA. All winner slots are reserved for eligible customers purchasing in that LGA.</li>
+          <li>Legacy multi-LGA draws retain their original allocation rules.</li>
           <li>Each customer enters once, in the location of their earliest eligible purchase. Additional receipts do not multiply their chances.</li>
           <li>Customers are selected randomly within their assigned LGA, with one win per customer per draw and equal prize amounts.</li>
           <li>Shortages block the draw. Refresh the preview after more customers qualify; prizes are not silently moved to another LGA.</li>

@@ -6,6 +6,11 @@ RewardEntry Entry(string phone, string lga, int day = 1) => new() { Receipt = ne
     CustomerPhoneHash = phone, Merchant = new Merchant { LgaCode = lga },
     TransactionDate = new DateTimeOffset(2026, 1, day, 0, 0, 0, TimeSpan.Zero) } };
 var id = Guid.NewGuid();
+var scopedDraw = new DrawPeriod { LgaCode = "IKEJA" };
+Check(scopedDraw.CoversLga(" ikeja ") && !scopedDraw.CoversLga("ALIMOSHO"), "Draw accepts only its selected LGA");
+Check(new DrawPeriod().CoversLga("ALIMOSHO"), "Legacy draw scope preserved");
+var emptyLga = LocationDraw.Allocate(id, 50, new[] { "IKEJA" }, new List<RewardEntry>());
+Check(emptyLga.Single().Shortfall == 50, "Selected LGA with no entries shows full shortage");
 var entries = Enumerable.Range(0, 100).Select(i => Entry($"phone{i}", $"LGA{i % 4}")).ToList();
 entries.Add(Entry("phone0", "LGA1", 2));
 var customers = LocationDraw.Customers(entries);

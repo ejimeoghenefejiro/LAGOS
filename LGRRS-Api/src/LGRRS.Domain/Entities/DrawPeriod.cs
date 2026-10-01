@@ -11,6 +11,8 @@ public class DrawPeriod
     public DateTimeOffset? DrawDate { get; set; }
     public DrawPeriodStatus Status { get; set; } = DrawPeriodStatus.Open;
     public decimal PrizeBudget { get; set; }
+    public string? LgaCode { get; set; }
+    public bool CoversLga(string lga) => LgaCode == null || string.Equals(LgaCode, lga.Trim(), StringComparison.OrdinalIgnoreCase);
     public int WinnerCount { get; set; } = 50;
 
     // Persisted for auditability of the frozen candidate population, per spec section 13.3.

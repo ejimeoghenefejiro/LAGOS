@@ -125,7 +125,7 @@ public class ReceiptsController : ControllerBase
         }
 
         var now = DateTimeOffset.UtcNow;
-        var currentDraw = await _db.DrawPeriods.Where(d => d.Status == DrawPeriodStatus.Open &&
+        var currentDraw = await _db.DrawPeriods.Where(d => d.Status == DrawPeriodStatus.Open && (d.LgaCode == null || d.LgaCode == merchant.LgaCode.Trim().ToUpper()) &&
             d.StartDate <= now && d.EndDate >= now).OrderBy(d => d.EndDate).FirstOrDefaultAsync();
 
         var receipt = new Receipt
@@ -199,6 +199,7 @@ public class ReceiptsController : ControllerBase
 
     internal static async Task AddRewardEntry(LgrrsDbContext _db, Merchant merchant, Receipt receipt, DrawPeriod currentDraw)
     {
+        if (!currentDraw.CoversLga(merchant.LgaCode)) throw new InvalidOperationException("The business is outside this draw's LGA.");
             var entry = new RewardEntry
             {
                 ReceiptId = receipt.ReceiptId,
