@@ -122,7 +122,7 @@ public class AdminController : ControllerBase
             new FraudRiskSummary(fraudHigh, fraudMedium, fraudLow)));
     }
 
-    public record CreateDrawRequest(string Type, decimal PrizeBudget);
+    public record CreateDrawRequest(string Type, decimal PrizeBudget, int WinnerCount = 50);
 
     [HttpGet("draws")]
     public async Task<IActionResult> DrawHistory()
@@ -141,7 +141,9 @@ public class AdminController : ControllerBase
     {
         if (request.Type is not ("Weekly" or "Monthly"))
             return BadRequest("Choose Weekly or Monthly.");
-        var minimumBudget = PrizeTiers.AllTiers.Sum(PrizeTiers.PrizeFor);
+        if (request.WinnerCount < 1 || request.WinnerCount > 1000) return BadRequest("Choose between 1 and 1000 winners.");
+        if (request.PrizeBudget * 100 % request.WinnerCount != 0) return BadRequest("Budget must divide equally between winners to the nearest kobo.");
+        var minimumBudget = request.WinnerCount * 0.01m;
         if (request.PrizeBudget < minimumBudget || request.PrizeBudget > 1000000000m ||
             decimal.Round(request.PrizeBudget, 2) != request.PrizeBudget)
             return BadRequest($"Prize budget must be between {minimumBudget} and 1000000000, with at most two decimal places.");
@@ -153,7 +155,7 @@ public class AdminController : ControllerBase
         var draw = new DrawPeriod {
             Type = request.Type == "Weekly" ? DrawPeriodType.Weekly : DrawPeriodType.Monthly,
             StartDate = start, EndDate = request.Type == "Weekly" ? start.AddDays(7) : start.AddMonths(1),
-            PrizeBudget = request.PrizeBudget
+            PrizeBudget = request.PrizeBudget, WinnerCount = request.WinnerCount
         };
         _db.DrawPeriods.Add(draw);
         _db.AuditEvents.Add(new AuditEvent { EventType = "DrawCreated", EntityType = "DrawPeriod",
@@ -196,8 +198,36 @@ public class AdminController : ControllerBase
             eligibleEntries));
     }
 
+
+    public record LocationPreview(int WinnerCount, decimal PrizePerWinner, bool CanRun, string PreviewToken, List<LocationDraw.Allocation> Locations);
+    private async Task<LocationPreview> BuildLocationPreview(DrawPeriod draw, List<RewardEntry> candidates)
+    {
+        // Include locations with entries that are all blocked: show their zero eligible count.
+        var locations = await _db.RewardEntries.Where(e => e.DrawPeriodId == draw.DrawPeriodId)
+            .Select(e => e.Receipt!.Merchant!.LgaCode).Distinct().ToListAsync();
+        var customers = LocationDraw.Customers(candidates);
+        var allocations = LocationDraw.Allocate(draw.DrawPeriodId, draw.WinnerCount, locations, customers);
+        var payload = System.Text.Json.JsonSerializer.Serialize(new { draw.DrawPeriodId, draw.PrizeBudget, draw.WinnerCount,
+            Allocations = allocations, Customers = customers.Select(c => new { c.EntryId, Location = LocationDraw.Location(c), c.Receipt!.CustomerPhoneHash }) });
+        var token = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(payload)));
+        var valid = draw.WinnerCount > 0 && draw.PrizeBudget > 0 && draw.PrizeBudget * 100 % Math.Max(1, draw.WinnerCount) == 0;
+        return new(draw.WinnerCount, valid ? draw.PrizeBudget / draw.WinnerCount : 0,
+            valid && allocations.Count > 0 && allocations.All(a => a.Shortfall == 0), token, allocations);
+    }
+    [HttpGet("draws/{drawPeriodId:guid}/preview")]
+    public async Task<IActionResult> PreviewDraw(Guid drawPeriodId)
+    {
+        var draw = await _db.DrawPeriods.FindAsync(drawPeriodId);
+        if (draw == null) return NotFound();
+        if (draw.Status != DrawPeriodStatus.Open) return Conflict("This draw is already published.");
+        var candidates = await _db.RewardEntries.Include(e => e.Receipt).ThenInclude(r => r!.Merchant)
+            .Where(e => e.DrawPeriodId == drawPeriodId && e.EligibilityStatus == EligibilityStatus.Eligible && e.RiskStatus == RiskStatus.Clear
+                && e.Receipt!.Status == ReceiptStatus.Valid && e.Receipt.Merchant!.Status == MerchantStatus.Verified && e.DrawResult == null).ToListAsync();
+        return Ok(await BuildLocationPreview(draw, candidates));
+    }
+    public record RunLocationDrawRequest(string PreviewToken);
     [HttpPost("draws/{drawPeriodId:guid}/run")]
-    public async Task<ActionResult<RunDrawResponse>> RunDraw(Guid drawPeriodId)
+    public async Task<ActionResult<RunDrawResponse>> RunDraw(Guid drawPeriodId, RunLocationDrawRequest request)
     {
         await using var transaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
         await LockDrawAdministration();
@@ -226,65 +256,20 @@ public class AdminController : ControllerBase
             .ToListAsync();
 
         if (candidates.Count == 0) return Conflict("No eligible entries yet. Issue receipts during this draw period first.");
-        if (draw.PrizeBudget < PrizeTiers.AllTiers.Sum(PrizeTiers.PrizeFor))
-            return Conflict("The prize budget cannot cover the configured prize tiers.");
-
+        var preview = await BuildLocationPreview(draw, candidates);
+        if (request.PreviewToken != preview.PreviewToken) return Conflict("Eligible customers changed. Refresh the location preview before publishing.");
+        if (!preview.CanRun) return Conflict("Some locations have too few eligible customers. No winners were selected; refresh the preview.");
         draw.CandidateSetCount = candidates.Count;
         draw.CandidateSetHash = ComputeCandidateHash(candidates.Select(c => c.EntryId));
-
-        // Repeat winners this calendar month get 1/20 the selection weight of a fresh
-        // customer, rather than being excluded outright, so new winners keep surfacing.
-        var monthStart = new DateTimeOffset(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, TimeSpan.Zero);
-        var priorWinnerPhoneHashes = (await _db.DrawResults
-            .Where(r => r.DrawTimestamp >= monthStart)
-            .Select(r => r.Entry!.Receipt!.CustomerPhoneHash)
-            .ToListAsync())
-            .Where(h => h != null)
-            .ToHashSet();
-
-        var winningMerchantIds = new HashSet<Guid>();
-        var winningPhoneHashes = new HashSet<string>();
         var createdResults = new List<DrawResult>();
-
-        foreach (var tier in PrizeTiers.AllTiers)
+        foreach (var picked in LocationDraw.Pick(preview.Locations, LocationDraw.Customers(candidates)))
         {
-            // Spread winners across merchants (proxy for spreading across the LGA, since we
-            // don't track ward-level location) and never let one customer win twice in a draw.
-            var tierCandidates = candidates
-                .Where(c => PrizeTiers.TierFor(c.Receipt!.Amount) == tier
-                    && !winningMerchantIds.Contains(c.Receipt.MerchantId)
-                    && (c.Receipt.CustomerPhoneHash == null || !winningPhoneHashes.Contains(c.Receipt.CustomerPhoneHash)))
-                .ToList();
-
-            if (tierCandidates.Count == 0)
-            {
-                continue;
-            }
-
-            var weights = tierCandidates
-                .Select(c => c.Receipt!.CustomerPhoneHash != null && priorWinnerPhoneHashes.Contains(c.Receipt.CustomerPhoneHash) ? 0.05 : 1.0)
-                .ToList();
-
-            var picked = WeightedPick(tierCandidates, weights);
-
-            var result = new DrawResult
-            {
-                DrawPeriodId = drawPeriodId,
-                EntryId = picked.EntryId,
-                PrizeTier = tier,
-                PrizeAmount = PrizeTiers.PrizeFor(tier),
-                DrawTimestamp = DateTimeOffset.UtcNow
-            };
-            _db.DrawResults.Add(result);
-            createdResults.Add(result);
-
-            winningMerchantIds.Add(picked.Receipt!.MerchantId);
-            if (picked.Receipt.CustomerPhoneHash != null)
-            {
-                winningPhoneHashes.Add(picked.Receipt.CustomerPhoneHash);
-            }
+            var result = new DrawResult { DrawPeriodId = drawPeriodId, EntryId = picked.EntryId,
+                PrizeTier = "Equal", PrizeAmount = preview.PrizePerWinner, DrawTimestamp = DateTimeOffset.UtcNow };
+            _db.DrawResults.Add(result); createdResults.Add(result);
         }
-
+        _db.AuditEvents.Add(new AuditEvent { EventType = "DrawLocationAllocation", EntityType = "DrawPeriod", EntityId = drawPeriodId,
+            Metadata = System.Text.Json.JsonSerializer.Serialize(preview) });
         draw.Status = DrawPeriodStatus.Published;
         draw.DrawDate = DateTimeOffset.UtcNow;
 
@@ -339,27 +324,6 @@ public class AdminController : ControllerBase
             r.PrizeClaim != null)).ToList();
 
         return Ok(winners);
-    }
-
-    private static RewardEntry WeightedPick(List<RewardEntry> items, List<double> weights)
-    {
-        var total = weights.Sum();
-        var bytes = new byte[8];
-        RandomNumberGenerator.Fill(bytes);
-        var fraction = BitConverter.ToUInt64(bytes, 0) / (double)ulong.MaxValue;
-        var target = fraction * total;
-
-        double cumulative = 0;
-        for (var i = 0; i < items.Count; i++)
-        {
-            cumulative += weights[i];
-            if (target <= cumulative)
-            {
-                return items[i];
-            }
-        }
-
-        return items[^1];
     }
 
     private static string ComputeCandidateHash(IEnumerable<Guid> entryIds)

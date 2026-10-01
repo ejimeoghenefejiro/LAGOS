@@ -14,14 +14,17 @@ export default function AdminDrawsPage() {
   const [history, setHistory] = useState<CurrentDraw[]>([]);
   const [loading, setLoading] = useState(true);
   const [drawType, setDrawType] = useState("Weekly");
-  const [budget, setBudget] = useState("50000");
+  const [budget, setBudget] = useState("1000000");
+  const [winnerCount, setWinnerCount] = useState("50");
+  const [preview, setPreview] = useState<{winnerCount: number; prizePerWinner: number; canRun: boolean; previewToken: string; locations: {location: string; slots: number; eligibleCustomers: number; shortfall: number}[]} | null>(null);
   const [confirmRun, setConfirmRun] = useState(false);
 
   const selectDraw = async (selected: CurrentDraw) => {
     if (!session) return;
     setLoading(true); setError(null); setConfirmRun(false); setWinners([]);
-    setDraw(selected);
+    setDraw(selected); setPreview(null);
     try {
+      if (selected.status === "Open") setPreview(await api.get(`/api/admin/draws/${selected.drawPeriodId}/preview`, session.accessToken));
       setWinners(await api.get<DrawWinnerItem[]>(`/api/admin/draws/${selected.drawPeriodId}/winners`, session.accessToken));
     } catch { setError("Could not load winners. Please refresh."); }
     finally { setLoading(false); }
@@ -52,19 +55,19 @@ export default function AdminDrawsPage() {
     if (!session) return;
     setRunning(true); setError(null);
     try {
-      const created = await api.post<CurrentDraw>("/api/admin/draws", { type: drawType, prizeBudget: Number(budget) }, session.accessToken);
+      const created = await api.post<CurrentDraw>("/api/admin/draws", { type: drawType, prizeBudget: Number(budget), winnerCount: Number(winnerCount) }, session.accessToken);
       setHistory(prev => [created, ...prev]); setDraw(created); setWinners([]);
-      setNotFound(false); setConfirmRun(false);
+      setNotFound(false); setConfirmRun(false); await selectDraw(created);
     } catch (err) { setError(err instanceof Error ? err.message : "Could not create draw."); }
     finally { setRunning(false); }
   };
 
   const runDraw = async () => {
-    if (!draw || !session) return;
+    if (!draw || !session || !preview?.canRun) return;
     setError(null);
     setRunning(true);
     try {
-      const result = await api.post<RunDrawResponse>(`/api/admin/draws/${draw.drawPeriodId}/run`, undefined, session.accessToken);
+      const result = await api.post<RunDrawResponse>(`/api/admin/draws/${draw.drawPeriodId}/run`, { previewToken: preview.previewToken }, session.accessToken);
       setWinners(result.winners);
       // Don't refetch "current draw" here — it just left Open status, so that endpoint
       // would 404. Patch the draw we already have in state instead of losing the result.
@@ -91,10 +94,11 @@ export default function AdminDrawsPage() {
             <label className="field-label">Draw period<select value={drawType} onChange={e => setDrawType(e.target.value)} disabled={running}>
               <option>Weekly</option><option>Monthly</option>
             </select></label>
-            <label className="field-label">Prize budget (₦)<input type="number" min="37500" max="1000000000" step="0.01" required value={budget} onChange={e => setBudget(e.target.value)} disabled={running} /></label>
+            <label className="field-label">Prize budget (₦)<input type="number" min="0.01" max="1000000000" step="0.01" required value={budget} onChange={e => setBudget(e.target.value)} disabled={running} /></label>
           </div>
+          <label className="field-label">Number of winners<input type="number" min="1" max="1000" step="1" required value={winnerCount} onChange={e => setWinnerCount(e.target.value)} disabled={running} /></label>
           <p>Starts immediately and accepts receipts for {drawType === "Weekly" ? "7 days" : "one calendar month"}. Existing receipts are not re-entered.</p>
-          <p className="admin-muted-text">The current demo awards up to one ₦2,500, ₦10,000 and ₦25,000 prize. Minimum budget: ₦37,500. No money is transferred.</p>
+          <p className="admin-muted-text">Equal prizes: ₦{(Number(budget) / Math.max(1, Number(winnerCount))).toLocaleString(undefined, { maximumFractionDigits: 2 })} per winner. The budget must divide equally to the nearest kobo. No money is transferred.</p>
           <button className="primary" disabled={running}>{running ? "Creating…" : "Create draw period"}</button>
         </form>
       </section>}
@@ -122,16 +126,27 @@ export default function AdminDrawsPage() {
           <dt>Draw Date</dt>
           <dd>{draw.drawDate ? new Date(draw.drawDate).toLocaleString() : "Not run yet"}</dd>
         </dl>
+        {draw.status === "Open" && preview && <section>
+          <h3>Location allocation preview</h3>
+          <p>{preview.winnerCount} winners · ₦{preview.prizePerWinner.toLocaleString()} each. Locations are business LGAs with entries in this draw, including locations whose entries are all ineligible.</p>
+          {preview.locations.length === 0 && <p>No participating locations yet.</p>}
+          {preview.locations.some(l => l.slots === 0) && <p role="status">There are fewer winner slots than locations. Locations with zero slots will have no winner in this draw.</p>}
+          <div className="table-scroll"><table className="admin-table">
+            <thead><tr><th>LGA</th><th>Winner slots</th><th>Eligible customers</th><th>Shortfall</th></tr></thead>
+            <tbody>{preview.locations.map(l => <tr key={l.location}><td>{l.location}</td><td>{l.slots}</td><td>{l.eligibleCustomers}</td><td>{l.shortfall ? `${l.shortfall} more needed` : "None"}</td></tr>)}</tbody>
+          </table></div>
+          {!preview.canRun && <p role="status">Cannot run yet: each location must have enough eligible customers for its allocation and the budget must divide equally.</p>}
+        </section>}
         {draw.status === "Open" ? (
           <div>
-            <p>{draw.eligibleEntries === 0 ? "Waiting for eligible receipts. Issue a new receipt from a verified merchant during this period." : "Ready to select winners from eligible receipts."}</p>
+            <p>{preview?.canRun ? "Every location has enough eligible customers. Ready to select winners." : "Waiting for the location allocation requirements to be met."}</p>
             {confirmRun ? <div className="stack-md">
               <p>Run and publish this demo draw now? This closes entry collection immediately, even if the period has not ended. Published results cannot be rerun.</p>
               <div className="step-actions">
                 <button onClick={() => setConfirmRun(false)} disabled={running}>Cancel</button>
-                <button className="primary" onClick={runDraw} disabled={running}>{running ? "Publishing…" : "Confirm and publish"}</button>
+                <button className="primary" onClick={runDraw} disabled={running || !preview?.canRun}>{running ? "Publishing…" : "Confirm and publish"}</button>
               </div>
-            </div> : <button className="admin-manage-draw-button" onClick={() => setConfirmRun(true)} disabled={running || loading || draw.eligibleEntries === 0}>Run demo draw</button>}
+            </div> : <button className="admin-manage-draw-button" onClick={() => setConfirmRun(true)} disabled={running || loading || !preview?.canRun}>Run demo draw</button>}
             <button onClick={load} disabled={running || loading}>Refresh entries</button>
           </div>
         ) : (
@@ -179,11 +194,12 @@ export default function AdminDrawsPage() {
           <h2>How Winners Are Selected</h2>
         </div>
         <ul className="admin-algo-notes">
-          <li>Receipt amount decides which prize tier an entry can win &mdash; small purchases can only win the small-tier prize, never the jackpot.</li>
-          <li>At most one winner per merchant per draw, to spread prizes across the LGA rather than one location.</li>
-          <li>Customers who already won this calendar month get 1/20th the selection weight of a fresh customer, so new winners keep surfacing.</li>
-          <li>Splitting a purchase into many small receipts to farm small-tier entries gets detected and those entries are excluded.</li>
-        </ul>
+          <li>Winner slots are split evenly across participating business LGAs, differing by at most one slot.</li>
+          <li>Any remaining slots use a fixed order specific to this draw, shown in the preview before selection.</li>
+          <li>Each customer enters once, in the location of their earliest eligible purchase. Additional receipts do not multiply their chances.</li>
+          <li>Customers are selected randomly within their assigned LGA, with one win per customer per draw and equal prize amounts.</li>
+          <li>Shortages block the draw. Refresh the preview after more customers qualify; prizes are not silently moved to another LGA.</li>
+          <li>Fraud-flagged or ineligible receipts are excluded. Receipt amount no longer sets the prize tier.</li>        </ul>
       </div>
     </div>
   );
